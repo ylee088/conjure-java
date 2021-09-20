@@ -37,6 +37,8 @@ org.mockito:* = 4.0.0
 org.slf4j:* = 1.7.32
 com.palantir.goethe:* = 0.2.0
 com.github.stefanbirkner:system-lambda = 1.2.0
+org.derive4j:* = 1.1.1
+com.google.auto:auto-common = 1.1.2
 
 # dependency-upgrader:OFF
 # Avoid forcing consumers to upgrade jackson
