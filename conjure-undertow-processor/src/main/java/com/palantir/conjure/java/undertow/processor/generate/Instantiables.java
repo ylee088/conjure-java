@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
-package com.palantir.conjure.java.undertow.annotations;
+package com.palantir.conjure.java.undertow.processor.generate;
 
-import com.palantir.conjure.java.undertow.lib.Deserializer;
-import com.palantir.conjure.java.undertow.lib.TypeMarker;
-import com.palantir.conjure.java.undertow.lib.UndertowRuntime;
+import com.squareup.javapoet.CodeBlock;
+import com.squareup.javapoet.TypeName;
 
-public interface DeserializerFactory<U> {
-    <T extends U> Deserializer<T> deserializer(TypeMarker<T> type, UndertowRuntime runtime);
+final class Instantiables {
+    private Instantiables() {}
+
+    // TODO(ckozak): Take an element or type arg and determine if it's a singleton enum
+    static CodeBlock instantiate(TypeName typeName) {
+        return CodeBlock.of("new $T()", typeName);
+    }
 }

@@ -2,5 +2,4 @@ apply plugin: 'com.palantir.external-publish-jar'
 
 dependencies {
     api project(':conjure-undertow-lib')
-    implementation project(':conjure-java-undertow-runtime')
 }

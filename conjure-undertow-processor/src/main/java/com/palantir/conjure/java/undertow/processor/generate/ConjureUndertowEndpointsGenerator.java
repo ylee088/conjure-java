@@ -17,7 +17,6 @@
 package com.palantir.conjure.java.undertow.processor.generate;
 
 import com.google.common.collect.ImmutableList;
-import com.palantir.conjure.java.undertow.annotations.Json;
 import com.palantir.conjure.java.undertow.lib.Endpoint;
 import com.palantir.conjure.java.undertow.lib.ReturnValueWriter;
 import com.palantir.conjure.java.undertow.lib.Serializer;
@@ -116,45 +115,37 @@ public final class ConjureUndertowEndpointsGenerator {
                 .addParameter(HttpServerExchange.class, EXCHANGE_NAME)
                 .addException(Exception.class);
         ReturnType returnType = endpoint.returns();
-        TypeName responseTypeName = returnType.asyncInnerType().orElseGet(returnType::returnType);
-        // TODO(ckozak): handle parameters
-        if (returnType.asyncInnerType().isEmpty()) {
-            if (returnType.isVoid()) {
-                handlerBuilder
-                        .addStatement(
-                                "this.$N.$N()",
-                                DELEGATE_NAME,
-                                endpoint.endpointName().get())
-                        .addStatement("$N.setStatusCode($T.NO_CONTENT)", EXCHANGE_NAME, StatusCodes.class);
-            } else if (ClassName.get(Json.class).equals(returnType.serializerFactory())) {
-                additionalFields.add(ImmutableAdditionalField.builder()
-                        .field(FieldSpec.builder(
-                                        ParameterizedTypeName.get(ClassName.get(Serializer.class), responseTypeName),
-                                        returnType.serializerFieldName(),
-                                        Modifier.PRIVATE,
-                                        Modifier.FINAL)
-                                .build())
-                        .constructorInitializer(CodeBlock.builder()
-                                .addStatement(
-                                        "this.$N = $N.bodySerDe().serializer(new $T<$T>() {})",
-                                        returnType.serializerFieldName(),
-                                        RUNTIME_NAME,
-                                        TypeMarker.class,
-                                        responseTypeName)
-                                .build())
-                        .build());
-                handlerBuilder.addStatement(
-                        "write(this.$N.$N(), $N)",
-                        DELEGATE_NAME,
-                        endpoint.endpointName().get(),
-                        EXCHANGE_NAME);
-            } else {
-                throw new UnsupportedOperationException("Support for custom serializers has not been implemented");
-            }
+        TypeName responseTypeName =
+                returnType.asyncInnerType().orElseGet(returnType::returnType).box();
+        if (returnType.asyncInnerType().isEmpty() && returnType.isVoid()) {
+            handlerBuilder
+                    .addStatement(invokeDelegate(endpoint))
+                    .addStatement("$N.setStatusCode($T.NO_CONTENT)", EXCHANGE_NAME, StatusCodes.class);
         } else {
-            throw new UnsupportedOperationException("Async endpoints are not currently supported");
+            additionalFields.add(ImmutableAdditionalField.builder()
+                    .field(FieldSpec.builder(
+                                    ParameterizedTypeName.get(ClassName.get(Serializer.class), responseTypeName),
+                                    returnType.serializerFieldName(),
+                                    Modifier.PRIVATE,
+                                    Modifier.FINAL)
+                            .build())
+                    .constructorInitializer(CodeBlock.builder()
+                            .addStatement(
+                                    "this.$N = $L.serializer(new $T<$T>() {}, $N)",
+                                    returnType.serializerFieldName(),
+                                    Instantiables.instantiate(returnType.serializerFactory()),
+                                    TypeMarker.class,
+                                    responseTypeName,
+                                    RUNTIME_NAME)
+                            .build())
+                    .build());
+            if (returnType.asyncInnerType().isPresent()) {
+                handlerBuilder.addStatement(
+                        "$N.async().register($L, this, $N)", RUNTIME_NAME, invokeDelegate(endpoint), EXCHANGE_NAME);
+            } else {
+                handlerBuilder.addStatement("write($L, $N)", invokeDelegate(endpoint), EXCHANGE_NAME);
+            }
         }
-
         TypeSpec.Builder endpointBuilder = TypeSpec.classBuilder(endpointClassName(endpoint.endpointName()))
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                 .addSuperinterface(HttpHandler.class)
@@ -223,6 +214,15 @@ public final class ConjureUndertowEndpointsGenerator {
                         .addStatement("return this")
                         .build())
                 .build();
+    }
+
+    // TODO(ckozak): handle parameters
+    private static CodeBlock invokeDelegate(EndpointDefinition endpoint) {
+        CodeBlock args = endpoint.arguments().stream()
+                .map(arg -> CodeBlock.of("$N", arg.argName().get()))
+                .collect(CodeBlock.joining(","));
+        return CodeBlock.of(
+                "this.$N.$N($L)", DELEGATE_NAME, endpoint.endpointName().get(), args);
     }
 
     @Value.Immutable

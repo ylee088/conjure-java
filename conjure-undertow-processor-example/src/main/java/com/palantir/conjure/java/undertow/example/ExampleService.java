@@ -16,8 +16,12 @@
 
 package com.palantir.conjure.java.undertow.example;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.palantir.conjure.java.undertow.annotations.Handle;
 import com.palantir.conjure.java.undertow.annotations.HttpMethod;
+import com.palantir.conjure.java.undertow.lib.BinaryResponseBody;
+import java.io.Closeable;
+import java.util.Optional;
 
 public interface ExampleService {
 
@@ -26,4 +30,27 @@ public interface ExampleService {
 
     @Handle(method = HttpMethod.GET, path = "/ping")
     String ping();
+
+    @Handle(method = HttpMethod.GET, path = "/pingAsync")
+    ListenableFuture<String> pingAsync();
+
+    @Handle(method = HttpMethod.GET, path = "/voidAsync")
+    ListenableFuture<Void> voidAsync();
+
+    @Handle(method = HttpMethod.GET, path = "/returnPrimitive")
+    int returnPrimitive();
+
+    @Handle(method = HttpMethod.GET, path = "/binary")
+    BinaryResponseBody binary();
+
+    @Handle(method = HttpMethod.GET, path = "/namedBinary")
+    CustomBinaryResponseBody namedBinary();
+
+    @Handle(method = HttpMethod.GET, path = "/optionalBinary")
+    Optional<BinaryResponseBody> optionalBinary();
+
+    @Handle(method = HttpMethod.GET, path = "/optionalNamedBinary")
+    Optional<CustomBinaryResponseBody> optionalNamedBinary();
+
+    interface CustomBinaryResponseBody extends Closeable, BinaryResponseBody {}
 }

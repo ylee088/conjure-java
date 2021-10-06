@@ -19,29 +19,23 @@ package com.palantir.conjure.java.undertow.example;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.common.collect.Iterables;
+import com.palantir.conjure.java.undertow.lib.UndertowService;
 import com.palantir.conjure.java.undertow.runtime.ConjureHandler;
 import com.palantir.conjure.java.undertow.runtime.ConjureUndertowRuntime;
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
 class ExampleServiceTest {
 
     @Test
     void testSimpleRequest() throws IOException {
-        Undertow server = Undertow.builder()
-                .setIoThreads(1)
-                .setWorkerThreads(1)
-                .addHttpListener(0, "localhost")
-                .setHandler(ConjureHandler.builder()
-                        .runtime(ConjureUndertowRuntime.builder().build())
-                        .services(ExampleServiceEndpoints.of(new ExampleResource()))
-                        .build())
-                .build();
-        server.start();
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
         try {
             int port = getPort(server);
             HttpURLConnection connection =
@@ -54,16 +48,7 @@ class ExampleServiceTest {
 
     @Test
     void testPing() throws IOException {
-        Undertow server = Undertow.builder()
-                .setIoThreads(1)
-                .setWorkerThreads(1)
-                .addHttpListener(0, "localhost")
-                .setHandler(ConjureHandler.builder()
-                        .runtime(ConjureUndertowRuntime.builder().build())
-                        .services(ExampleServiceEndpoints.of(new ExampleResource()))
-                        .build())
-                .build();
-        server.start();
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
         try {
             int port = getPort(server);
             HttpURLConnection connection =
@@ -76,9 +61,127 @@ class ExampleServiceTest {
         }
     }
 
+    @Test
+    void testAsync() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/pingAsync").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasContent("\"pong\"");
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testAsyncVoid() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/voidAsync").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(204);
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testReturnPrimitive() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/returnPrimitive").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasContent("1");
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testBinary() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/binary").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/octet-stream");
+            assertThat(connection.getInputStream()).hasBinaryContent("binary".getBytes(StandardCharsets.UTF_8));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testNamedBinary() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/namedBinary").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/octet-stream");
+            assertThat(connection.getInputStream()).hasBinaryContent("binary".getBytes(StandardCharsets.UTF_8));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testOptionalBinary() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/optionalBinary").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/octet-stream");
+            assertThat(connection.getInputStream()).hasBinaryContent("binary".getBytes(StandardCharsets.UTF_8));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testOptionalNamedBinary() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/optionalNamedBinary").openConnection();
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/octet-stream");
+            assertThat(connection.getInputStream()).hasBinaryContent("binary".getBytes(StandardCharsets.UTF_8));
+        } finally {
+            server.stop();
+        }
+    }
+
     private static int getPort(Undertow server) {
         InetSocketAddress address = (InetSocketAddress)
                 Iterables.getOnlyElement(server.getListenerInfo()).getAddress();
         return address.getPort();
+    }
+
+    private static Undertow started(UndertowService service) {
+        Undertow server = Undertow.builder()
+                .setIoThreads(1)
+                .setWorkerThreads(1)
+                .setServerOption(UndertowOptions.DECODE_URL, false)
+                .addHttpListener(0, "localhost")
+                .setHandler(ConjureHandler.builder()
+                        .runtime(ConjureUndertowRuntime.builder().build())
+                        .services(service)
+                        .build())
+                .build();
+        server.start();
+        return server;
     }
 }

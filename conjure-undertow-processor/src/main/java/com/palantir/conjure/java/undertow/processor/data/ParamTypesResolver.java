@@ -20,8 +20,8 @@ import com.google.auto.common.MoreElements;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.palantir.conjure.java.undertow.annotations.CollectionParamDecoder;
+import com.palantir.conjure.java.undertow.annotations.DefaultSerDe;
 import com.palantir.conjure.java.undertow.annotations.Handle;
-import com.palantir.conjure.java.undertow.annotations.Json;
 import com.palantir.conjure.java.undertow.annotations.ParamDecoder;
 import com.palantir.conjure.java.undertow.processor.data.ParameterDecoderType.DecoderType;
 import com.palantir.logsafe.SafeArg;
@@ -113,7 +113,8 @@ public final class ParamTypesResolver {
             // TODO(12345): Check that custom serializer has no-arg constructor and implements the right types that
             //  match
             return Optional.of(ParameterTypes.body(
-                    customSerializer.map(TypeName::get).orElseGet(() -> ClassName.get(Json.class)), serializerName));
+                    customSerializer.map(TypeName::get).orElseGet(() -> ClassName.get(DefaultSerDe.class)),
+                    serializerName));
         } else if (annotationReflector.isAnnotation(Handle.Header.class)) {
             return Optional.of(ParameterTypes.header(
                     annotationReflector.getStringValueField(),
@@ -150,7 +151,7 @@ public final class ParamTypesResolver {
                 .map(TypeName::get);
 
         if (encoderTypeName.isPresent() && listEncoderTypeName.isPresent()) {
-            context.reportError("Only one of encoder and listEncoder can be set", variableElement);
+            context.reportError("Only one of decoder and listEncoder can be set", variableElement);
 
             return Optional.empty();
         }

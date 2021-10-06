@@ -49,7 +49,7 @@ public @interface Handle {
      *
      * @return class that implements a zero-arg constructor to be used to deserialize the response
      */
-    Class<? extends SerializerFactory> produces() default Json.class;
+    Class<? extends SerializerFactory> produces() default DefaultSerDe.class;
 
     // TODO(ckozak): Custom exception handling? Not sure it should be necessary if we support custom response status
     //  codes.
@@ -65,9 +65,9 @@ public @interface Handle {
          * Custom body {@link DeserializerFactory}.
          *
          * @return class that implements a zero-arg constructor to be used to serialize the body. Defaults to
-         * {@link Json}
+         * {@link DefaultSerDe}
          */
-        Class<? extends DeserializerFactory> value() default Json.class;
+        Class<? extends DeserializerFactory> value() default DefaultSerDe.class;
     }
 
     @Retention(RetentionPolicy.SOURCE)

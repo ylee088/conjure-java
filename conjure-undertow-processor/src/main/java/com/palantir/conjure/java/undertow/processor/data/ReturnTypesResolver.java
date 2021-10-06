@@ -17,7 +17,7 @@
 package com.palantir.conjure.java.undertow.processor.data;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import com.palantir.conjure.java.undertow.annotations.Json;
+import com.palantir.conjure.java.undertow.annotations.DefaultSerDe;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 import java.util.Optional;
@@ -42,8 +42,9 @@ public final class ReturnTypesResolver {
                 handleAnnotation.getFieldMaybe("produces", TypeMirror.class);
         return Optional.of(ImmutableReturnType.builder()
                 .returnType(TypeName.get(returnType))
-                .serializerFactory(
-                        maybeProducesSerializerFactory.map(TypeName::get).orElseGet(() -> ClassName.get(Json.class)))
+                .serializerFactory(maybeProducesSerializerFactory
+                        .map(TypeName::get)
+                        .orElseGet(() -> ClassName.get(DefaultSerDe.class)))
                 .serializerFieldName(InstanceVariables.joinCamelCase(endpointName.get(), "Serializer"))
                 .asyncInnerType(maybeListenableFutureInnerType.map(TypeName::get))
                 .build());

@@ -16,6 +16,14 @@
 
 package com.palantir.conjure.java.undertow.example;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.palantir.conjure.java.undertow.lib.BinaryResponseBody;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+
 final class ExampleResource implements ExampleService {
     @Override
     public void simple() {}
@@ -23,5 +31,54 @@ final class ExampleResource implements ExampleService {
     @Override
     public String ping() {
         return "pong";
+    }
+
+    @Override
+    public ListenableFuture<String> pingAsync() {
+        return Futures.immediateFuture(ping());
+    }
+
+    @Override
+    public ListenableFuture<Void> voidAsync() {
+        return Futures.immediateVoidFuture();
+    }
+
+    @Override
+    public int returnPrimitive() {
+        return 1;
+    }
+
+    @Override
+    public BinaryResponseBody binary() {
+        return Binary.INSTANCE;
+    }
+
+    @Override
+    public CustomBinaryResponseBody namedBinary() {
+        return Binary.INSTANCE;
+    }
+
+    @Override
+    public Optional<BinaryResponseBody> optionalBinary() {
+        return Optional.of(binary());
+    }
+
+    @Override
+    public Optional<CustomBinaryResponseBody> optionalNamedBinary() {
+        return Optional.of(namedBinary());
+    }
+
+    private enum Binary implements CustomBinaryResponseBody {
+        INSTANCE;
+
+        @Override
+        public void write(OutputStream responseBody) throws IOException {
+            responseBody.write("binary".getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public void close() {
+            // nop
+        }
     }
 }
