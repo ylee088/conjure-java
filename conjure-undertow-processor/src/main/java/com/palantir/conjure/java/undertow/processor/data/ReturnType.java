@@ -16,6 +16,7 @@
 
 package com.palantir.conjure.java.undertow.processor.data;
 
+import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 import java.util.Optional;
 import org.immutables.value.Value;
@@ -25,7 +26,7 @@ import org.immutables.value.Value;
 public interface ReturnType {
     TypeName returnType();
 
-    TypeName serializerFactory();
+    CodeBlock serializerFactory();
 
     String serializerFieldName();
 

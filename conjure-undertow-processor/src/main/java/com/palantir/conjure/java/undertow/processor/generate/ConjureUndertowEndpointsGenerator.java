@@ -133,7 +133,7 @@ public final class ConjureUndertowEndpointsGenerator {
                             .addStatement(
                                     "this.$N = $L.serializer(new $T<$T>() {}, $N)",
                                     returnType.serializerFieldName(),
-                                    Instantiables.instantiate(returnType.serializerFactory()),
+                                    returnType.serializerFactory(),
                                     TypeMarker.class,
                                     responseTypeName,
                                     RUNTIME_NAME)

@@ -33,7 +33,9 @@ import java.lang.reflect.Type;
 import java.util.Optional;
 
 /** Default serializer and deserializer factory which produces behavior equivalent to conjure. */
-public final class DefaultSerDe implements SerializerFactory<Object>, DeserializerFactory<Object> {
+public enum DefaultSerDe implements SerializerFactory<Object>, DeserializerFactory<Object> {
+    INSTANCE;
+
     private static final TypeMarker<InputStream> INPUT_STREAM = new TypeMarker<>() {};
 
     @Override
