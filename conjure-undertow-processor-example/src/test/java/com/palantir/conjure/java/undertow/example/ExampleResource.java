@@ -68,6 +68,11 @@ final class ExampleResource implements ExampleService {
         return Optional.of(namedBinary());
     }
 
+    @Override
+    public String post(String body) {
+        return body;
+    }
+
     private enum Binary implements CustomBinaryResponseBody {
         INSTANCE;
 

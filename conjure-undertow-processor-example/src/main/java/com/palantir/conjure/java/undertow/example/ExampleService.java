@@ -52,5 +52,8 @@ public interface ExampleService {
     @Handle(method = HttpMethod.GET, path = "/optionalNamedBinary")
     Optional<CustomBinaryResponseBody> optionalNamedBinary();
 
+    @Handle(method = HttpMethod.POST, path = "/post")
+    String post(@Handle.Body String body);
+
     interface CustomBinaryResponseBody extends Closeable, BinaryResponseBody {}
 }

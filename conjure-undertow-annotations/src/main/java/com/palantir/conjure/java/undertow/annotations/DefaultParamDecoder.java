@@ -17,6 +17,6 @@
 package com.palantir.conjure.java.undertow.annotations;
 
 /** Marker interface to appease the compiler. Not used at runtime. */
-public abstract class DefaultParamDecoder implements ParamDecoder<Object> {
+public abstract class DefaultParamDecoder implements ParamDecoder<Object>, CollectionParamDecoder<Object> {
     private DefaultParamDecoder() {}
 }

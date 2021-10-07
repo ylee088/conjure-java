@@ -17,6 +17,7 @@
 package com.palantir.conjure.java.undertow.processor.generate;
 
 import com.google.common.collect.ImmutableList;
+import com.palantir.conjure.java.undertow.lib.Deserializer;
 import com.palantir.conjure.java.undertow.lib.Endpoint;
 import com.palantir.conjure.java.undertow.lib.ReturnValueWriter;
 import com.palantir.conjure.java.undertow.lib.Serializer;
@@ -25,6 +26,9 @@ import com.palantir.conjure.java.undertow.lib.UndertowRuntime;
 import com.palantir.conjure.java.undertow.lib.UndertowService;
 import com.palantir.conjure.java.undertow.processor.data.EndpointDefinition;
 import com.palantir.conjure.java.undertow.processor.data.EndpointName;
+import com.palantir.conjure.java.undertow.processor.data.ParameterDecoderType;
+import com.palantir.conjure.java.undertow.processor.data.ParameterType;
+import com.palantir.conjure.java.undertow.processor.data.ParameterType.Cases;
 import com.palantir.conjure.java.undertow.processor.data.ReturnType;
 import com.palantir.conjure.java.undertow.processor.data.ServiceDefinition;
 import com.squareup.javapoet.AnnotationSpec;
@@ -43,6 +47,7 @@ import io.undertow.util.StatusCodes;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import javax.annotation.processing.Generated;
 import javax.lang.model.element.Modifier;
 import org.immutables.value.Value;
@@ -146,6 +151,46 @@ public final class ConjureUndertowEndpointsGenerator {
                 handlerBuilder.addStatement("write($L, $N)", invokeDelegate(endpoint), EXCHANGE_NAME);
             }
         }
+        endpoint.arguments().forEach(def -> def.paramType().match(new Cases<Void>() {
+            @Override
+            public Void body(CodeBlock deserializerFactory, String deserializerFieldName) {
+                TypeName requestBodyType = def.argType().match(ArgTypeTypeName.INSTANCE);
+                additionalFields.add(ImmutableAdditionalField.builder()
+                        .field(FieldSpec.builder(
+                                        ParameterizedTypeName.get(ClassName.get(Deserializer.class), responseTypeName),
+                                        deserializerFieldName,
+                                        Modifier.PRIVATE,
+                                        Modifier.FINAL)
+                                .build())
+                        .constructorInitializer(CodeBlock.builder()
+                                .addStatement(
+                                        "this.$N = $L.deserializer(new $T<$T>() {}, $N)",
+                                        deserializerFieldName,
+                                        deserializerFactory,
+                                        TypeMarker.class,
+                                        requestBodyType,
+                                        RUNTIME_NAME)
+                                .build())
+                        .build());
+                return null;
+            }
+
+            @Override
+            public Void header(String _headerName, Optional<ParameterDecoderType> _paramEncoderType) {
+                return null;
+            }
+
+            @Override
+            public Void path(Optional<ParameterDecoderType> _paramEncoderType) {
+                return null;
+            }
+
+            @Override
+            public Void query(String _paramName, Optional<ParameterDecoderType> _paramEncoderType) {
+                return null;
+            }
+        }));
+
         TypeSpec.Builder endpointBuilder = TypeSpec.classBuilder(endpointClassName(endpoint.endpointName()))
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                 .addSuperinterface(HttpHandler.class)
@@ -216,10 +261,30 @@ public final class ConjureUndertowEndpointsGenerator {
                 .build();
     }
 
-    // TODO(ckozak): handle parameters
+    // TODO(ckozak): handle non-body parameters
     private static CodeBlock invokeDelegate(EndpointDefinition endpoint) {
         CodeBlock args = endpoint.arguments().stream()
-                .map(arg -> CodeBlock.of("$N", arg.argName().get()))
+                .map(arg -> arg.paramType().match(new ParameterType.Cases<CodeBlock>() {
+                    @Override
+                    public CodeBlock body(CodeBlock _deserializerFactory, String deserializerFieldName) {
+                        return CodeBlock.of("$N.deserialize($N)", deserializerFieldName, EXCHANGE_NAME);
+                    }
+
+                    @Override
+                    public CodeBlock header(String _headerName, Optional<ParameterDecoderType> _paramDecoderType) {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public CodeBlock path(Optional<ParameterDecoderType> _paramDecoderType) {
+                        throw new UnsupportedOperationException();
+                    }
+
+                    @Override
+                    public CodeBlock query(String _paramName, Optional<ParameterDecoderType> _paramDecoderType) {
+                        throw new UnsupportedOperationException();
+                    }
+                }))
                 .collect(CodeBlock.joining(","));
         return CodeBlock.of(
                 "this.$N.$N($L)", DELEGATE_NAME, endpoint.endpointName().get(), args);

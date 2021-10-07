@@ -78,9 +78,7 @@ public final class ParamTypesResolver {
         }
 
         if (paramAnnotationMirrors.isEmpty()) {
-            if (context.isAssignable(variableElement.asType(), InputStream.class)) {
-                return Optional.of(ParameterTypes.rawBody());
-            } else if (context.isSameTypes(variableElement.asType(), AuthHeader.class)) {
+            if (context.isSameTypes(variableElement.asType(), AuthHeader.class)) {
                 return Optional.of(ParameterTypes.header("Authorization", Optional.empty()));
             } else {
                 context.reportError(
@@ -106,9 +104,9 @@ public final class ParamTypesResolver {
                 ImmutableAnnotationReflector.of(Iterables.getOnlyElement(paramAnnotationMirrors));
         if (annotationReflector.isAnnotation(Handle.Body.class)) {
             // default annotation param values are not available at annotation processing time
-            String serializerName = InstanceVariables.joinCamelCase(endpointName.get(), "Serializer");
-            TypeMirror serializer = annotationReflector.getAnnotationValue(TypeMirror.class);
-            return Optional.of(ParameterTypes.body(TypeName.get(serializer), serializerName));
+            String deserializerName = InstanceVariables.joinCamelCase(endpointName.get(), "Deserializer");
+            TypeMirror deserializer = annotationReflector.getAnnotationValue(TypeMirror.class);
+            return Optional.of(ParameterTypes.body(Instantiables.instantiate(deserializer), deserializerName));
         } else if (annotationReflector.isAnnotation(Handle.Header.class)) {
             return Optional.of(ParameterTypes.header(
                     annotationReflector.getStringValueField(),

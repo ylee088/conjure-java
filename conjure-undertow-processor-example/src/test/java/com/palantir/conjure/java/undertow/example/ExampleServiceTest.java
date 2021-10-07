@@ -29,6 +29,7 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class ExampleServiceTest {
@@ -159,6 +160,25 @@ class ExampleServiceTest {
             assertThat(connection.getResponseCode()).isEqualTo(200);
             assertThat(connection.getContentType()).startsWith("application/octet-stream");
             assertThat(connection.getInputStream()).hasBinaryContent("binary".getBytes(StandardCharsets.UTF_8));
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testPostRequest() throws IOException {
+        Undertow server = started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/post").openConnection();
+            connection.setDoOutput(true);
+            byte[] contents = ("\"" + UUID.randomUUID() + "\"").getBytes(StandardCharsets.UTF_8);
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.getOutputStream().write(contents);
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasBinaryContent(contents);
         } finally {
             server.stop();
         }
