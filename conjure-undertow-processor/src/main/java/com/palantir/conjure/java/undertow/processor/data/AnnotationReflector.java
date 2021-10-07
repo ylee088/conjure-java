@@ -16,11 +16,11 @@
 
 package com.palantir.conjure.java.undertow.processor.data;
 
+import com.google.auto.common.AnnotationMirrors;
 import com.google.auto.common.MoreElements;
 import com.palantir.common.streams.KeyedStream;
 import com.palantir.logsafe.Preconditions;
 import com.palantir.logsafe.SafeArg;
-import com.palantir.logsafe.exceptions.SafeIllegalStateException;
 import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Optional;
@@ -51,7 +51,7 @@ public interface AnnotationReflector {
 
     @Value.Derived
     default Map<String, Object> values() {
-        return KeyedStream.stream(annotationMirror().getElementValues())
+        return KeyedStream.stream(AnnotationMirrors.getAnnotationValuesWithDefaults(annotationMirror()))
                 .mapKeys(key -> key.getSimpleName().toString())
                 .map(AnnotationValue::getValue)
                 .collectToMap();
@@ -62,18 +62,18 @@ public interface AnnotationReflector {
     }
 
     default String getStringValueField() {
-        return getValueStrict(String.class);
+        return getAnnotationValue(String.class);
     }
 
-    default <T> Optional<T> getValueFieldMaybe(Class<T> valueClazz) {
-        return getFieldMaybe("value", valueClazz);
+    default <T> T getAnnotationValue(String name, Class<T> valueClazz) {
+        return valueClazz.cast(
+                AnnotationMirrors.getAnnotationValue(annotationMirror(), name).getValue());
     }
 
-    default <T> T getValueStrict(Class<T> valueClazz) {
-        return getValueFieldMaybe(valueClazz).orElseThrow(() -> new SafeIllegalStateException("Unknown value"));
+    default <T> T getAnnotationValue(Class<T> valueClazz) {
+        return getAnnotationValue("value", valueClazz);
     }
 
-    @SuppressWarnings("unchecked")
     default <T> Optional<T> getFieldMaybe(String fieldName, Class<T> valueClazz) {
         Preconditions.checkArgument(
                 methods().containsKey(fieldName),
@@ -84,7 +84,7 @@ public interface AnnotationReflector {
         Optional<Object> maybeValue = Optional.ofNullable(values().get(fieldName));
         return maybeValue.map(value -> {
             Preconditions.checkArgument(valueClazz.isInstance(value), "Value not of the right type");
-            return (T) value;
+            return valueClazz.cast(value);
         });
     }
 }

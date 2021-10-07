@@ -75,7 +75,7 @@ public @interface Handle {
     @interface Header {
         String value();
 
-        Class<? extends CollectionParamDecoder<?>> encoder() default DefaultCollectionParamDecoder.class;
+        Class<? extends CollectionParamDecoder<?>> decoder() default DefaultCollectionParamDecoder.class;
     }
 
     @Retention(RetentionPolicy.SOURCE)

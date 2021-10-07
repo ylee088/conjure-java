@@ -16,21 +16,11 @@
 
 package com.palantir.conjure.java.undertow.processor.data;
 
-import com.google.auto.common.MoreTypes;
-import com.google.common.collect.MoreCollectors;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.palantir.conjure.java.undertow.annotations.DefaultSerDe;
-import com.palantir.logsafe.SafeArg;
-import com.palantir.logsafe.exceptions.SafeIllegalStateException;
-import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
 import java.util.Optional;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 public final class ReturnTypesResolver {
@@ -48,34 +38,12 @@ public final class ReturnTypesResolver {
         Optional<TypeMirror> maybeListenableFutureInnerType = getListenableFutureInnerType(returnType);
         // TODO(12345): Validate deserializer types match
 
-        Optional<TypeMirror> maybeProducesSerializerFactory =
-                handleAnnotation.getFieldMaybe("produces", TypeMirror.class);
-
-        CodeBlock factory = maybeProducesSerializerFactory
-                .map(mirror -> {
-                    DeclaredType declaredType = MoreTypes.asDeclared(mirror);
-                    if (declaredType == null) {
-                        throw new SafeIllegalStateException(
-                                "TypeMirror is not a DeclaredType", SafeArg.of("type", mirror));
-                    }
-                    TypeElement typeElement = (TypeElement) declaredType.asElement();
-                    if (typeElement.getKind() == ElementKind.ENUM) {
-                        Element onlyEnumConstant = typeElement.getEnclosedElements().stream()
-                                .filter(elem -> elem.getKind() == ElementKind.ENUM_CONSTANT)
-                                .collect(MoreCollectors.onlyElement());
-                        return CodeBlock.of(
-                                "$T.$N",
-                                TypeName.get(mirror),
-                                onlyEnumConstant.getSimpleName().toString());
-                    } else {
-                        return CodeBlock.of("new $T()", TypeName.get(mirror));
-                    }
-                })
-                .orElseGet(() -> CodeBlock.of("$T.INSTANCE", ClassName.get(DefaultSerDe.class)));
+        TypeMirror producesSerializerFactory = handleAnnotation.getAnnotationValue("produces", TypeMirror.class);
+        CodeBlock factoryInstantiator = Instantiables.instantiate(producesSerializerFactory);
 
         return Optional.of(ImmutableReturnType.builder()
                 .returnType(TypeName.get(returnType))
-                .serializerFactory(factory)
+                .serializerFactory(factoryInstantiator)
                 .serializerFieldName(InstanceVariables.joinCamelCase(endpointName.get(), "Serializer"))
                 .asyncInnerType(maybeListenableFutureInnerType.map(TypeName::get))
                 .build());

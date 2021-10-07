@@ -56,8 +56,7 @@ public final class EndpointDefinitions {
                 element.getEnclosingElement().getSimpleName().toString());
 
         HttpMethod method = HttpMethod.valueOf(requestAnnotationReflector
-                .getFieldMaybe("method", VariableElement.class)
-                .get()
+                .getAnnotationValue("method", VariableElement.class)
                 .getSimpleName()
                 .toString());
         Optional<HttpPath> maybeHttpPath = httpPathParser.getHttpPath(element, requestAnnotationReflector);

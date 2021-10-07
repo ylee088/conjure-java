@@ -20,7 +20,6 @@ import com.google.auto.common.MoreElements;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.palantir.conjure.java.undertow.annotations.CollectionParamDecoder;
-import com.palantir.conjure.java.undertow.annotations.DefaultSerDe;
 import com.palantir.conjure.java.undertow.annotations.Handle;
 import com.palantir.conjure.java.undertow.annotations.ParamDecoder;
 import com.palantir.conjure.java.undertow.processor.data.ParameterDecoderType.DecoderType;
@@ -28,7 +27,6 @@ import com.palantir.logsafe.SafeArg;
 import com.palantir.logsafe.exceptions.SafeIllegalStateException;
 import com.palantir.logsafe.exceptions.SafeRuntimeException;
 import com.palantir.tokens.auth.AuthHeader;
-import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.TypeName;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -109,12 +107,8 @@ public final class ParamTypesResolver {
         if (annotationReflector.isAnnotation(Handle.Body.class)) {
             // default annotation param values are not available at annotation processing time
             String serializerName = InstanceVariables.joinCamelCase(endpointName.get(), "Serializer");
-            Optional<TypeMirror> customSerializer = annotationReflector.getValueFieldMaybe(TypeMirror.class);
-            // TODO(12345): Check that custom serializer has no-arg constructor and implements the right types that
-            //  match
-            return Optional.of(ParameterTypes.body(
-                    customSerializer.map(TypeName::get).orElseGet(() -> ClassName.get(DefaultSerDe.class)),
-                    serializerName));
+            TypeMirror serializer = annotationReflector.getAnnotationValue(TypeMirror.class);
+            return Optional.of(ParameterTypes.body(TypeName.get(serializer), serializerName));
         } else if (annotationReflector.isAnnotation(Handle.Header.class)) {
             return Optional.of(ParameterTypes.header(
                     annotationReflector.getStringValueField(),
@@ -129,7 +123,7 @@ public final class ParamTypesResolver {
                     DecoderTypeAndMethod.LIST)));
         } else if (annotationReflector.isAnnotation(Handle.QueryParam.class)) {
             return Optional.of(ParameterTypes.query(
-                    annotationReflector.getValueStrict(String.class),
+                    annotationReflector.getAnnotationValue(String.class),
                     getParameterDecoder(
                             endpointName, variableElement, annotationReflector, DecoderTypeAndMethod.LIST)));
         }
@@ -143,21 +137,21 @@ public final class ParamTypesResolver {
             AnnotationReflector annotationReflector,
             DecoderTypeAndMethod decoderTypeAndMethod,
             DecoderTypeAndMethod listDecoderTypeAndMethod) {
-        Optional<TypeName> encoderTypeName =
-                annotationReflector.getFieldMaybe("encoder", TypeMirror.class).map(TypeName::get);
+        Optional<TypeName> decoderTypeName =
+                annotationReflector.getFieldMaybe("decoder", TypeMirror.class).map(TypeName::get);
 
         Optional<TypeName> listEncoderTypeName = annotationReflector
                 .getFieldMaybe("listEncoder", TypeMirror.class)
                 .map(TypeName::get);
 
-        if (encoderTypeName.isPresent() && listEncoderTypeName.isPresent()) {
+        if (decoderTypeName.isPresent() && listEncoderTypeName.isPresent()) {
             context.reportError("Only one of decoder and listEncoder can be set", variableElement);
 
             return Optional.empty();
         }
 
-        if (encoderTypeName.isPresent()) {
-            return getParameterDecoder(endpointName, variableElement, encoderTypeName, decoderTypeAndMethod);
+        if (decoderTypeName.isPresent()) {
+            return getParameterDecoder(endpointName, variableElement, decoderTypeName, decoderTypeAndMethod);
         }
         return getParameterDecoder(endpointName, variableElement, listEncoderTypeName, listDecoderTypeAndMethod);
     }
@@ -170,7 +164,7 @@ public final class ParamTypesResolver {
         return getParameterDecoder(
                 endpointName,
                 variableElement,
-                annotationReflector.getFieldMaybe("encoder", TypeMirror.class).map(TypeName::get),
+                Optional.of(TypeName.get(annotationReflector.getAnnotationValue("decoder", TypeMirror.class))),
                 decoderTypeAndMethod);
     }
 
@@ -183,7 +177,7 @@ public final class ParamTypesResolver {
                 .type(decoderTypeAndMethod.decoderType)
                 .decoderJavaType(encoderJavaType)
                 .decoderFieldName(InstanceVariables.joinCamelCase(
-                        endpointName.get(), variableElement.getSimpleName().toString(), "Encoder"))
+                        endpointName.get(), variableElement.getSimpleName().toString(), "Decoder"))
                 .decoderMethodName(decoderTypeAndMethod.method)
                 .build());
     }

@@ -33,8 +33,7 @@ public final class HttpPathParser {
 
     public Optional<HttpPath> getHttpPath(Element element, AnnotationReflector requestAnnotation) {
         try {
-            String rawPath =
-                    requestAnnotation.getFieldMaybe("path", String.class).orElseThrow();
+            String rawPath = requestAnnotation.getAnnotationValue("path", String.class);
             UriTemplateParser uriTemplateParser = new UriTemplateParser(rawPath);
 
             Splitter splitter = Splitter.on('/');
