@@ -52,6 +52,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -90,7 +91,6 @@ public final class ConjureUndertowAnnotationProcessor extends AbstractProcessor 
         }
 
         KeyedStream.of(roundEnv.getElementsAnnotatedWith(Handle.class))
-                .map(e -> (Element) e)
                 .mapKeys(Element::getEnclosingElement)
                 .collectToSetMultimap()
                 .asMap()
@@ -114,17 +114,22 @@ public final class ConjureUndertowAnnotationProcessor extends AbstractProcessor 
     }
 
     private JavaFile generateUndertowServiceEndpoints(
-            Element annotatedInterface, Collection<Element> annotatedMethods) {
-        ElementKind kind = annotatedInterface.getKind();
-        Preconditions.checkArgument(kind.isInterface(), "Only methods on interfaces can be annotated with @Handle");
-
-        Set<Element> nonMethodElements = annotatedMethods.stream()
-                .filter(element -> !element.getKind().equals(ElementKind.METHOD))
-                .collect(Collectors.toSet());
-        validationStep(ctx -> nonMethodElements.forEach(
-                nonMethodElement -> ctx.reportError("Only methods can be annotated with @Handle", nonMethodElement)));
-
-        Preconditions.checkArgument(nonMethodElements.isEmpty(), "Only methods can be annotated with @Handle");
+            Element annotatedInterface, Collection<? extends Element> annotatedMethods) {
+        validationStep(ctx -> {
+            for (Element element : annotatedMethods) {
+                if (!element.getKind().equals(ElementKind.METHOD)) {
+                    ctx.reportError("Only methods can be annotated with @Handle", element);
+                } else if (element.getModifiers().contains(Modifier.PRIVATE)
+                        || element.getModifiers().contains(Modifier.PROTECTED)) {
+                    ctx.reportError(
+                            "Methods annotated with '@Handle' must be accessible to classes in the same "
+                                    + "package, neither 'private' nor 'protected' modifiers are allowed.",
+                            element);
+                } else if (element.getModifiers().contains(Modifier.STATIC)) {
+                    ctx.reportError("The '@Handle' annotation does not support static methods.", element);
+                }
+            }
+        });
 
         List<EndpointDefinition> endpoints = processingStep(ctx -> {
             EndpointDefinitions endpointDefinitions = new EndpointDefinitions(ctx, elements, types);

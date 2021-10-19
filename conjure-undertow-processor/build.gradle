@@ -13,6 +13,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core'
     testImplementation 'org.mockito:mockito-core'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'com.google.testing.compile:compile-testing'
 
     annotationProcessor 'org.immutables:value'
     compileOnly 'org.immutables:value::annotations'
