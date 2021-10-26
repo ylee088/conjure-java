@@ -29,10 +29,6 @@ public final class HeaderParamDeserializer<T> implements Deserializer<T> {
     private final HttpString headerName;
     private final CollectionParamDecoder<? extends T> decoder;
 
-    public HeaderParamDeserializer(String headerName, ParamDecoder<? extends T> decoder) {
-        this(headerName, new SingleParamDecoder<>(decoder));
-    }
-
     public HeaderParamDeserializer(String headerName, CollectionParamDecoder<? extends T> decoder) {
         Preconditions.checkNotNull(headerName, "Header name is required");
         this.headerName = Preconditions.checkNotNull(

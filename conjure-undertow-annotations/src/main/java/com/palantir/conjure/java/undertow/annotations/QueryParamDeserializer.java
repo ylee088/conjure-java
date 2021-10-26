@@ -27,10 +27,6 @@ public final class QueryParamDeserializer<T> implements Deserializer<T> {
     private final String parameter;
     private final CollectionParamDecoder<? extends T> decoder;
 
-    public QueryParamDeserializer(String parameter, ParamDecoder<? extends T> decoder) {
-        this(parameter, new SingleParamDecoder<>(decoder));
-    }
-
     public QueryParamDeserializer(String parameter, CollectionParamDecoder<? extends T> decoder) {
         this.parameter = Preconditions.checkNotNull(parameter, "Query parameter name is required");
         this.decoder = Preconditions.checkNotNull(decoder, "Decoder is required");
