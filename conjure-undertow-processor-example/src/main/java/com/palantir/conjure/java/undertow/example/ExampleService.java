@@ -23,8 +23,10 @@ import com.palantir.conjure.java.undertow.annotations.Handle;
 import com.palantir.conjure.java.undertow.annotations.HttpMethod;
 import com.palantir.conjure.java.undertow.annotations.ParamDecoder;
 import com.palantir.conjure.java.undertow.lib.BinaryResponseBody;
+import com.palantir.conjure.java.undertow.lib.RequestContext;
 import com.palantir.logsafe.Preconditions;
 import com.palantir.tokens.auth.AuthHeader;
+import io.undertow.server.HttpServerExchange;
 import java.io.Closeable;
 import java.util.Collection;
 import java.util.Optional;
@@ -74,6 +76,12 @@ public interface ExampleService {
 
     @Handle(method = HttpMethod.GET, path = "/authHeader")
     String authenticated(AuthHeader auth);
+
+    @Handle(method = HttpMethod.GET, path = "/exchange")
+    void exchange(HttpServerExchange exchange);
+
+    @Handle(method = HttpMethod.GET, path = "/context")
+    void context(RequestContext context);
 
     interface CustomBinaryResponseBody extends Closeable, BinaryResponseBody {}
 

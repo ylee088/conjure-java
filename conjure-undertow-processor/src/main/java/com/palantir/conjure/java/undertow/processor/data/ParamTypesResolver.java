@@ -20,9 +20,11 @@ import com.google.auto.common.MoreElements;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.palantir.conjure.java.undertow.annotations.Handle;
+import com.palantir.conjure.java.undertow.lib.RequestContext;
 import com.palantir.logsafe.SafeArg;
 import com.palantir.logsafe.exceptions.SafeIllegalStateException;
 import com.palantir.tokens.auth.AuthHeader;
+import io.undertow.server.HttpServerExchange;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,10 @@ public final class ParamTypesResolver {
         if (paramAnnotationMirrors.isEmpty()) {
             if (context.isSameTypes(variableElement.asType(), AuthHeader.class)) {
                 return Optional.of(ParameterTypes.authHeader());
+            } else if (context.isSameTypes(variableElement.asType(), HttpServerExchange.class)) {
+                return Optional.of(ParameterTypes.exchange());
+            } else if (context.isSameTypes(variableElement.asType(), RequestContext.class)) {
+                return Optional.of(ParameterTypes.context());
             } else {
                 context.reportError(
                         "At least one annotation should be present or type should be InputStream",

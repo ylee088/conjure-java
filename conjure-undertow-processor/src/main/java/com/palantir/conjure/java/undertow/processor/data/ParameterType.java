@@ -32,6 +32,10 @@ public interface ParameterType {
         R query(String paramName, String deserializerFieldName, CodeBlock deserializerFactory);
 
         R authHeader();
+
+        R exchange();
+
+        R context();
     }
 
     <R> R match(Cases<R> cases);

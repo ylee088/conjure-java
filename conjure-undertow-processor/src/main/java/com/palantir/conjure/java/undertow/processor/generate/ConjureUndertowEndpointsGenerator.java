@@ -247,6 +247,16 @@ public final class ConjureUndertowEndpointsGenerator {
             public Void authHeader() {
                 return null;
             }
+
+            @Override
+            public Void exchange() {
+                return null;
+            }
+
+            @Override
+            public Void context() {
+                return null;
+            }
         }));
 
         TypeSpec.Builder endpointBuilder = TypeSpec.classBuilder(endpointClassName(endpoint.endpointName()))
@@ -348,6 +358,16 @@ public final class ConjureUndertowEndpointsGenerator {
                     @Override
                     public CodeBlock authHeader() {
                         return CodeBlock.of("this.$N.auth().header($N)", RUNTIME_NAME, EXCHANGE_NAME);
+                    }
+
+                    @Override
+                    public CodeBlock exchange() {
+                        return CodeBlock.of("$N", EXCHANGE_NAME);
+                    }
+
+                    @Override
+                    public CodeBlock context() {
+                        return CodeBlock.of("this.$N.contexts().createContext($N, this)", RUNTIME_NAME, EXCHANGE_NAME);
                     }
                 }))
                 .collect(CodeBlock.joining(","));
