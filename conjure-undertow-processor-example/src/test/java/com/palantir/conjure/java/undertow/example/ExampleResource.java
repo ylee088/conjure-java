@@ -19,6 +19,8 @@ package com.palantir.conjure.java.undertow.example;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.palantir.conjure.java.undertow.lib.BinaryResponseBody;
+import com.palantir.logsafe.Preconditions;
+import com.palantir.tokens.auth.AuthHeader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -70,7 +72,29 @@ final class ExampleResource implements ExampleService {
 
     @Override
     public String post(String body) {
-        return body;
+        return Preconditions.checkNotNull(body, "Body is required");
+    }
+
+    @Override
+    public String queryParam(String queryParameter) {
+        return Preconditions.checkNotNull(queryParameter, "Query parameter is required");
+    }
+
+    @Override
+    public String pathParam(String param) {
+        return Preconditions.checkNotNull(param, "Path parameter is required");
+    }
+
+    @Override
+    public String headerParam(String headerValue) {
+        return Preconditions.checkNotNull(headerValue, "Header parameter is required");
+    }
+
+    @Override
+    public String authenticated(AuthHeader auth) {
+        return Preconditions.checkNotNull(auth, "AuthHeader is required")
+                .getBearerToken()
+                .toString();
     }
 
     private enum Binary implements CustomBinaryResponseBody {

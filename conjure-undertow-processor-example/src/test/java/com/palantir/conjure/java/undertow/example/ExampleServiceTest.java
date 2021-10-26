@@ -18,6 +18,9 @@ package com.palantir.conjure.java.undertow.example;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.net.HttpHeaders;
+import com.palantir.tokens.auth.AuthHeader;
+import com.palantir.tokens.auth.BearerToken;
 import io.undertow.Undertow;
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -173,6 +176,74 @@ class ExampleServiceTest {
             assertThat(connection.getResponseCode()).isEqualTo(200);
             assertThat(connection.getContentType()).startsWith("application/json");
             assertThat(connection.getInputStream()).hasBinaryContent(contents);
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testQueryParam() throws IOException {
+        Undertow server = TestHelper.started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = TestHelper.getPort(server);
+            HttpURLConnection connection = (HttpURLConnection)
+                    new URL("http://localhost:" + port + "/queryParam?q=parameterValue").openConnection();
+            byte[] expected = "\"parameterValue\"".getBytes(StandardCharsets.UTF_8);
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasBinaryContent(expected);
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testPathParam() throws IOException {
+        Undertow server = TestHelper.started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = TestHelper.getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/path/parameterValue").openConnection();
+            byte[] expected = "\"parameterValue\"".getBytes(StandardCharsets.UTF_8);
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasBinaryContent(expected);
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testHeaderParam() throws IOException {
+        Undertow server = TestHelper.started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = TestHelper.getPort(server);
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/headerParam").openConnection();
+            connection.setRequestProperty("Foo", "parameterValue");
+            byte[] expected = "\"parameterValue\"".getBytes(StandardCharsets.UTF_8);
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasBinaryContent(expected);
+        } finally {
+            server.stop();
+        }
+    }
+
+    @Test
+    void testAuthHeader() throws IOException {
+        Undertow server = TestHelper.started(ExampleServiceEndpoints.of(new ExampleResource()));
+        try {
+            int port = TestHelper.getPort(server);
+            AuthHeader authHeader =
+                    AuthHeader.of(BearerToken.valueOf(UUID.randomUUID().toString()));
+            HttpURLConnection connection =
+                    (HttpURLConnection) new URL("http://localhost:" + port + "/authHeader").openConnection();
+            connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authHeader.toString());
+            byte[] expected = ("\"" + authHeader.getBearerToken().toString() + "\"").getBytes(StandardCharsets.UTF_8);
+            assertThat(connection.getResponseCode()).isEqualTo(200);
+            assertThat(connection.getContentType()).startsWith("application/json");
+            assertThat(connection.getInputStream()).hasBinaryContent(expected);
         } finally {
             server.stop();
         }

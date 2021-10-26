@@ -22,12 +22,10 @@ import com.google.common.collect.Iterables;
 import com.palantir.conjure.java.undertow.annotations.CollectionParamDecoder;
 import com.palantir.conjure.java.undertow.annotations.Handle;
 import com.palantir.conjure.java.undertow.annotations.ParamDecoder;
-import com.palantir.conjure.java.undertow.processor.data.ParameterDecoderType.DecoderType;
 import com.palantir.logsafe.SafeArg;
 import com.palantir.logsafe.exceptions.SafeIllegalStateException;
 import com.palantir.logsafe.exceptions.SafeRuntimeException;
 import com.palantir.tokens.auth.AuthHeader;
-import com.squareup.javapoet.TypeName;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,7 +77,7 @@ public final class ParamTypesResolver {
 
         if (paramAnnotationMirrors.isEmpty()) {
             if (context.isSameTypes(variableElement.asType(), AuthHeader.class)) {
-                return Optional.of(ParameterTypes.header("Authorization", Optional.empty()));
+                return Optional.of(ParameterTypes.authHeader());
             } else {
                 context.reportError(
                         "At least one annotation should be present or type should be InputStream",
@@ -103,95 +101,32 @@ public final class ParamTypesResolver {
         AnnotationReflector annotationReflector =
                 ImmutableAnnotationReflector.of(Iterables.getOnlyElement(paramAnnotationMirrors));
         if (annotationReflector.isAnnotation(Handle.Body.class)) {
-            // default annotation param values are not available at annotation processing time
             String deserializerName = InstanceVariables.joinCamelCase(endpointName.get(), "Deserializer");
             TypeMirror deserializer = annotationReflector.getAnnotationValue(TypeMirror.class);
             return Optional.of(ParameterTypes.body(Instantiables.instantiate(deserializer), deserializerName));
         } else if (annotationReflector.isAnnotation(Handle.Header.class)) {
+            String deserializerName = InstanceVariables.joinCamelCase(
+                    variableElement.getSimpleName().toString(), "Deserializer");
             return Optional.of(ParameterTypes.header(
-                    annotationReflector.getStringValueField(),
-                    getParameterDecoder(
-                            endpointName, variableElement, annotationReflector, DecoderTypeAndMethod.LIST)));
+                    annotationReflector.getAnnotationValue(String.class),
+                    deserializerName,
+                    Instantiables.instantiate(annotationReflector.getAnnotationValue("decoder", TypeMirror.class))));
         } else if (annotationReflector.isAnnotation(Handle.PathParam.class)) {
-            return Optional.of(ParameterTypes.path(getPathParameterDecoder(
-                    endpointName,
-                    variableElement,
-                    annotationReflector,
-                    DecoderTypeAndMethod.PARAM,
-                    DecoderTypeAndMethod.LIST)));
+            String javaParameterName = variableElement.getSimpleName().toString();
+            String deserializerName = InstanceVariables.joinCamelCase(javaParameterName, "Deserializer");
+            return Optional.of(ParameterTypes.path(
+                    javaParameterName,
+                    deserializerName,
+                    Instantiables.instantiate(annotationReflector.getAnnotationValue("decoder", TypeMirror.class))));
         } else if (annotationReflector.isAnnotation(Handle.QueryParam.class)) {
+            String deserializerName = InstanceVariables.joinCamelCase(
+                    variableElement.getSimpleName().toString(), "Deserializer");
             return Optional.of(ParameterTypes.query(
                     annotationReflector.getAnnotationValue(String.class),
-                    getParameterDecoder(
-                            endpointName, variableElement, annotationReflector, DecoderTypeAndMethod.LIST)));
+                    deserializerName,
+                    Instantiables.instantiate(annotationReflector.getAnnotationValue("decoder", TypeMirror.class))));
         }
 
         throw new SafeIllegalStateException("Not possible");
-    }
-
-    private Optional<ParameterDecoderType> getPathParameterDecoder(
-            EndpointName endpointName,
-            VariableElement variableElement,
-            AnnotationReflector annotationReflector,
-            DecoderTypeAndMethod decoderTypeAndMethod,
-            DecoderTypeAndMethod listDecoderTypeAndMethod) {
-        Optional<TypeName> decoderTypeName =
-                annotationReflector.getFieldMaybe("decoder", TypeMirror.class).map(TypeName::get);
-
-        Optional<TypeName> listEncoderTypeName = annotationReflector
-                .getFieldMaybe("listEncoder", TypeMirror.class)
-                .map(TypeName::get);
-
-        if (decoderTypeName.isPresent() && listEncoderTypeName.isPresent()) {
-            context.reportError("Only one of decoder and listEncoder can be set", variableElement);
-
-            return Optional.empty();
-        }
-
-        if (decoderTypeName.isPresent()) {
-            return getParameterDecoder(endpointName, variableElement, decoderTypeName, decoderTypeAndMethod);
-        }
-        return getParameterDecoder(endpointName, variableElement, listEncoderTypeName, listDecoderTypeAndMethod);
-    }
-
-    private Optional<ParameterDecoderType> getParameterDecoder(
-            EndpointName endpointName,
-            VariableElement variableElement,
-            AnnotationReflector annotationReflector,
-            DecoderTypeAndMethod decoderTypeAndMethod) {
-        return getParameterDecoder(
-                endpointName,
-                variableElement,
-                Optional.of(TypeName.get(annotationReflector.getAnnotationValue("decoder", TypeMirror.class))),
-                decoderTypeAndMethod);
-    }
-
-    private Optional<ParameterDecoderType> getParameterDecoder(
-            EndpointName endpointName,
-            VariableElement variableElement,
-            Optional<TypeName> typeName,
-            DecoderTypeAndMethod decoderTypeAndMethod) {
-        return typeName.map(encoderJavaType -> ImmutableParameterDecoderType.builder()
-                .type(decoderTypeAndMethod.decoderType)
-                .decoderJavaType(encoderJavaType)
-                .decoderFieldName(InstanceVariables.joinCamelCase(
-                        endpointName.get(), variableElement.getSimpleName().toString(), "Decoder"))
-                .decoderMethodName(decoderTypeAndMethod.method)
-                .build());
-    }
-
-    @SuppressWarnings("ImmutableEnumChecker")
-    private enum DecoderTypeAndMethod {
-        PARAM(DecoderTypes.param(), paramEncoderMethod),
-        LIST(DecoderTypes.listParam(), listParamEncoderMethod),
-        ;
-
-        private final DecoderType decoderType;
-        private final String method;
-
-        DecoderTypeAndMethod(DecoderType decoderType, String method) {
-            this.decoderType = decoderType;
-            this.method = method;
-        }
     }
 }

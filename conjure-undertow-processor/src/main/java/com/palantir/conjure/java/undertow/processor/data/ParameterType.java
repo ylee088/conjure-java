@@ -17,7 +17,6 @@
 package com.palantir.conjure.java.undertow.processor.data;
 
 import com.squareup.javapoet.CodeBlock;
-import java.util.Optional;
 import org.derive4j.Data;
 
 @Data
@@ -26,11 +25,13 @@ public interface ParameterType {
 
         R body(CodeBlock deserializerFactory, String deserializerFieldName);
 
-        R header(String headerName, Optional<ParameterDecoderType> paramDecoderType);
+        R header(String headerName, String deserializerFieldName, CodeBlock deserializerFactory);
 
-        R path(Optional<ParameterDecoderType> paramDecoderType);
+        R path(String paramName, String deserializerFieldName, CodeBlock deserializerFactory);
 
-        R query(String paramName, Optional<ParameterDecoderType> paramDecoderType);
+        R query(String paramName, String deserializerFieldName, CodeBlock deserializerFactory);
+
+        R authHeader();
     }
 
     <R> R match(Cases<R> cases);
