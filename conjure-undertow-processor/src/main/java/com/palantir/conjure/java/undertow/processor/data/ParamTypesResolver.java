@@ -19,16 +19,12 @@ package com.palantir.conjure.java.undertow.processor.data;
 import com.google.auto.common.MoreElements;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.palantir.conjure.java.undertow.annotations.CollectionParamDecoder;
 import com.palantir.conjure.java.undertow.annotations.Handle;
-import com.palantir.conjure.java.undertow.annotations.ParamDecoder;
 import com.palantir.logsafe.SafeArg;
 import com.palantir.logsafe.exceptions.SafeIllegalStateException;
-import com.palantir.logsafe.exceptions.SafeRuntimeException;
 import com.palantir.tokens.auth.AuthHeader;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import javax.lang.model.element.AnnotationMirror;
@@ -42,20 +38,6 @@ public final class ParamTypesResolver {
             ImmutableSet.of(Handle.Body.class, Handle.PathParam.class, Handle.QueryParam.class, Handle.Header.class);
     private static final ImmutableSet<String> PARAM_ANNOTATIONS =
             PARAM_ANNOTATION_CLASSES.stream().map(Class::getCanonicalName).collect(ImmutableSet.toImmutableSet());
-    private static final String paramEncoderMethod;
-    private static final String listParamEncoderMethod;
-
-    static {
-        try {
-            paramEncoderMethod =
-                    ParamDecoder.class.getMethod("decode", String.class).getName();
-            listParamEncoderMethod = CollectionParamDecoder.class
-                    .getMethod("decode", Collection.class)
-                    .getName();
-        } catch (NoSuchMethodException e) {
-            throw new SafeRuntimeException("Method renamed: are you sure you want to cause a break?", e);
-        }
-    }
 
     private final ResolverContext context;
 
